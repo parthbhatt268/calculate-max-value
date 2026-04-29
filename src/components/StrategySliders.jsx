@@ -26,17 +26,31 @@ function Slider({ label, value, display, min, max, step, onChange, endLabels }) 
   );
 }
 
-export default function StrategySliders({ state, onChange, minDownPayment, maxDownPayment }) {
+export default function StrategySliders({
+  state, onChange,
+  minDownPayment, maxDownPayment,
+  emi, baseSIP,
+}) {
   function set(key, parse = parseFloat) {
     return (val) => onChange({ ...state, [key]: parse(val) });
   }
 
-  const prepayPct = state.prepaySplitPercent;
-  const sipPct    = 100 - prepayPct;
+  // Show how the SIP target grows: year 1 vs final year
+  const sipStepUp = state.sipStepUpRate ?? 0;
+  const sipYr1    = baseSIP;
+  const sipYrN    = baseSIP * Math.pow(1 + sipStepUp, state.horizonYears - 1);
+
+  const stepUpLabel = sipStepUp === 0
+    ? 'flat (no increase)'
+    : `+${(sipStepUp * 100).toFixed(0)}% / yr`;
 
   return (
     <div className="border border-gray-200 rounded-md p-2.5 space-y-3">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Strategy</span>
+
+      {/* ── Prepayment ── */}
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+        Prepayment strategy
+      </span>
 
       <Slider
         label="Down payment"
@@ -60,16 +74,58 @@ export default function StrategySliders({ state, onChange, minDownPayment, maxDo
         endLabels={['0', '6']}
       />
 
-      <Slider
-        label="Surplus split"
-        value={prepayPct}
-        display={`${prepayPct}% prepay · ${sipPct}% SIP`}
-        min={0}
-        max={100}
-        step={5}
-        onChange={set('prepaySplitPercent', parseInt)}
-        endLabels={['100% SIP', '100% prepay']}
-      />
+      {/* ── Equity Investment ── */}
+      <div className="border-t border-gray-100 pt-2.5 space-y-3">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+          Equity investment
+        </span>
+
+        <Slider
+          label="Expected equity return"
+          value={Math.round(state.equityReturn * 1000) / 10}
+          display={`${(Math.round(state.equityReturn * 1000) / 10).toFixed(1)}% p.a.`}
+          min={4}
+          max={20}
+          step={0.5}
+          onChange={(v) => onChange({ ...state, equityReturn: parseFloat(v) / 100 })}
+          endLabels={['4%', '20%']}
+        />
+
+        <Slider
+          label="SIP step-up"
+          value={Math.round((sipStepUp) * 100)}
+          display={stepUpLabel}
+          min={0}
+          max={15}
+          step={1}
+          onChange={(v) => onChange({ ...state, sipStepUpRate: parseFloat(v) / 100 })}
+          endLabels={['0% (flat)', '15%/yr']}
+        />
+
+        {/* Live SIP display */}
+        <div className="bg-indigo-50 border border-indigo-100 rounded px-2 py-1.5 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-indigo-500">Monthly SIP — yr 1</span>
+            <span className="text-xs font-bold text-indigo-700 tabular-nums">
+              {formatINR(sipYr1)}/mo
+            </span>
+          </div>
+          {sipStepUp > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-indigo-400">
+                Monthly SIP — yr {state.horizonYears}
+              </span>
+              <span className="text-xs font-semibold text-indigo-600 tabular-nums">
+                {formatINR(sipYrN)}/mo
+              </span>
+            </div>
+          )}
+          <p className="text-[9px] text-indigo-400 leading-tight">
+            income − expenses − EMI; capped at actual monthly surplus
+          </p>
+        </div>
+      </div>
+
     </div>
   );
 }

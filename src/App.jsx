@@ -1,22 +1,23 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import InputsPanel from './components/InputsPanel';
-import StrategySliders from './components/StrategySliders';
+import { useState, useMemo, useCallback } from 'react';
+import InputsPanel       from './components/InputsPanel';
+import LoanSliders       from './components/LoanSliders';
+import CashFlowSliders   from './components/CashFlowSliders';
+import SIPSection        from './components/SIPSection';
 import SensitivitySliders from './components/SensitivitySliders';
-import OutputSummary from './components/OutputSummary';
-import LoanTimeline from './components/LoanTimeline';
-import NetWorthChart from './components/NetWorthChart';
-import CashFlowChart from './components/CashFlowChart';
-import { simulate } from './lib/simulate';
+import OutputSummary     from './components/OutputSummary';
+import LoanTimeline      from './components/LoanTimeline';
+import NetWorthChart     from './components/NetWorthChart';
+import CashFlowChart     from './components/CashFlowChart';
+import { simulate }      from './lib/simulate';
 
 const DEFAULTS = {
   housePrice:             13000000,
   miscCosts:               2000000,
   liquidSavings:           6500000,
-  emergencyFund:           1000000,
 
-  loanInterestRate:           9.0,
-  loanTenureYears:             30,
-  maxLTV:                    0.90,
+  loanInterestRate:            9.0,
+  loanTenureYears:              30,
+  maxLTV:                     0.90,
 
   monthlyIncome:           200000,
   monthlyExpenses:          50000,
@@ -28,15 +29,14 @@ const DEFAULTS = {
   realEstateAppreciation:    0.04,
 
   extraEMIsPerYear:             0,
-  prepaySplitPercent:           0,
 
   horizonYears:                30,
 };
 
 function computeDownPaymentBounds(state) {
-  const { housePrice, liquidSavings, miscCosts, emergencyFund, maxLTV } = state;
+  const { housePrice, liquidSavings, miscCosts, maxLTV } = state;
   const minDown  = housePrice * (1 - maxLTV);
-  const maxAvail = liquidSavings - miscCosts - emergencyFund;
+  const maxAvail = liquidSavings - miscCosts;
   const maxDown  = Math.min(Math.max(maxAvail, minDown), housePrice);
   return { minDown, maxDown };
 }
@@ -62,8 +62,12 @@ export default function App() {
 
   const { minDown, maxDown } = useMemo(
     () => computeDownPaymentBounds(state),
-    [state.housePrice, state.liquidSavings, state.miscCosts, state.emergencyFund, state.maxLTV],
+    [state.housePrice, state.liquidSavings, state.miscCosts, state.maxLTV],
   );
+
+  // Loan amount slider bounds
+  const minLoan = Math.max(0, state.housePrice - maxDown);
+  const maxLoan = state.housePrice - minDown;
 
   const result = useMemo(() => simulate(state), [state]);
   const { history, summary } = result;
@@ -72,7 +76,6 @@ export default function App() {
     <div className="h-screen flex flex-col overflow-hidden bg-white text-gray-900"
          style={{ fontFamily: 'system-ui,-apple-system,sans-serif' }}>
 
-      {/* Top header bar */}
       <header className="flex-shrink-0 flex items-center px-4 h-9 border-b border-gray-200 bg-white">
         <h1 className="text-sm font-semibold text-gray-800 tracking-tight">
           Home Loan Strategy Explorer
@@ -81,23 +84,37 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── LEFT PANEL: controls ── */}
-        <div className="w-[330px] flex-shrink-0 border-r border-gray-200 overflow-y-auto flex flex-col gap-2 p-2.5 bg-white">
+        {/* ── LEFT: controls ── */}
+        <div className="w-[330px] flex-shrink-0 border-r border-gray-200 overflow-y-auto
+                        flex flex-col gap-2 p-2.5 bg-white">
 
           <InputsPanel state={state} onChange={handleStateChange} />
 
-          <StrategySliders
+          <LoanSliders
             state={state}
             onChange={handleStateChange}
-            minDownPayment={minDown}
-            maxDownPayment={maxDown}
+            minLoan={minLoan}
+            maxLoan={maxLoan}
+            emi={summary?.emi ?? 0}
+          />
+
+          <CashFlowSliders
+            state={state}
+            onChange={handleStateChange}
+            emi={summary?.emi ?? 0}
+          />
+
+          <SIPSection
+            state={state}
+            onChange={handleStateChange}
+            summary={summary}
           />
 
           <SensitivitySliders state={state} onChange={handleStateChange} />
 
         </div>
 
-        {/* ── RIGHT PANEL: output + charts ── */}
+        {/* ── RIGHT: output + charts ── */}
         <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 p-2.5 bg-gray-50">
 
           <OutputSummary

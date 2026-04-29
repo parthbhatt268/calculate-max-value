@@ -19,12 +19,35 @@ function CustomTooltip({ active, payload, label }) {
       <p className="font-semibold text-gray-700 mb-1.5">Year {Number(label).toFixed(1)}</p>
       {payload.map((entry) => (
         <div key={entry.dataKey} className="flex justify-between gap-4">
-          <span style={{ color: entry.color }}>{entry.name}</span>
+          <span style={{ color: entry.stroke || entry.color }}>{entry.name}</span>
           <span className="font-medium text-gray-800 tabular-nums">{formatINR(entry.value)}</span>
         </div>
       ))}
     </div>
   );
+}
+
+// Renders nothing for every point except the last, where it draws a dot + value label
+function makeEndDot(color, key) {
+  return function EndDot({ cx, cy, index, payload, isLast }) {
+    if (!isLast) return <g />;
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={1.5} />
+        <text
+          x={cx + 7}
+          y={cy}
+          fontSize={9}
+          fontWeight="700"
+          fill={color}
+          textAnchor="start"
+          dominantBaseline="middle"
+        >
+          {formatINR(payload[key])}
+        </text>
+      </g>
+    );
+  };
 }
 
 export default function NetWorthChart({ history, nominalMode }) {
@@ -33,23 +56,34 @@ export default function NetWorthChart({ history, nominalMode }) {
   const data = history
     .filter((h) => h.month % SAMPLE_RATE === 0)
     .map((h) => ({
-      year:             parseFloat(h.year.toFixed(2)),
-      netWorth:         Math.round(nominalMode ? h.netWorth : h.realNetWorth),
-      investmentCorpus: Math.round(h.investmentCorpus),
-      houseValue:       Math.round(h.houseValue),
-      loanBalance:      Math.round(h.loanBalance),
+      year:         parseFloat(h.year.toFixed(2)),
+      netWorth:     Math.round(nominalMode ? h.netWorth         : h.realNetWorth),
+      investCorpus: Math.round(nominalMode ? h.investmentCorpus : h.realInvestCorpus),
+      houseValue:   Math.round(nominalMode ? h.houseValue       : h.realHouseValue),
     }));
 
-  const modeLabel = nominalMode ? 'Actual' : 'Inflation-adjusted';
+  const lastIdx = data.length - 1;
+
+  // Wrap each EndDot so it knows whether the current index is the last
+  function wrapDot(color, key) {
+    const Inner = makeEndDot(color, key);
+    return (props) => <Inner {...props} isLast={props.index === lastIdx} />;
+  }
 
   return (
     <div className="border border-gray-200 rounded-md p-2.5 bg-white">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
-        Net Worth Over Time — {modeLabel}
+        Net Worth Over Time — {nominalMode ? 'Actual ₹' : 'Inflation-adjusted ₹'}
+        {!nominalMode && (
+          <span className="ml-1 text-gray-400 normal-case font-normal">
+            (in today's purchasing power)
+          </span>
+        )}
       </p>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+        <LineChart data={data} margin={{ top: 8, right: 80, left: 8, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+
           <XAxis
             dataKey="year"
             type="number"
@@ -58,30 +92,33 @@ export default function NetWorthChart({ history, nominalMode }) {
             label={{ value: 'Year', position: 'insideBottomRight', offset: -8, fontSize: 11 }}
             tick={{ fontSize: 11 }}
           />
+
           <YAxis
             tickFormatter={formatINRAxis}
             tick={{ fontSize: 11 }}
             domain={[0, 'auto']}
-            width={68}
+            width={64}
           />
+
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
+
           <Line
             type="monotone"
             dataKey="netWorth"
             name="Net worth"
             stroke="#1f2937"
             strokeWidth={2.5}
-            dot={false}
+            dot={wrapDot('#1f2937', 'netWorth')}
             activeDot={{ r: 4 }}
           />
           <Line
             type="monotone"
-            dataKey="investmentCorpus"
+            dataKey="investCorpus"
             name="Investment corpus"
             stroke="#10b981"
             strokeWidth={1.5}
-            dot={false}
+            dot={wrapDot('#10b981', 'investCorpus')}
             activeDot={{ r: 4 }}
           />
           <Line
@@ -90,16 +127,7 @@ export default function NetWorthChart({ history, nominalMode }) {
             name="House value"
             stroke="#3b82f6"
             strokeWidth={1.5}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="loanBalance"
-            name="Loan balance"
-            stroke="#ef4444"
-            strokeWidth={1.5}
-            dot={false}
+            dot={wrapDot('#3b82f6', 'houseValue')}
             activeDot={{ r: 4 }}
           />
         </LineChart>
