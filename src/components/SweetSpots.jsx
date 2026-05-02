@@ -1,6 +1,20 @@
 import { useState } from 'react';
 import { formatINR } from '../lib/formatINR';
 
+const SENSIBLE_PROS = [
+  'Max down payment removes Day-0 leverage risk. Under real market volatility the median outcome is similar to min-down — but the bad-outcome tail is much wider with leverage.',
+  'As an NRI you have no Section 24 tax deduction on home loan interest. The leverage arbitrage is weaker than it looks in a deterministic 12%-equity model.',
+  '25% prepayment closes the loan around year 11, giving ~9 extra years completely debt-free before the horizon ends.',
+  '75% surplus still flows to SIP — you capture most of the equity compounding benefit with only ~1.5% expected corpus cost vs pure SIP.',
+  'Structural resilience: if income is disrupted or rates rise, you carry less debt and have no Day-0 corpus exposed to an early market drawdown.',
+];
+
+const SENSIBLE_CONS = [
+  'All liquid savings committed to down payment — virtually zero Day-0 investable corpus (ring-fence a separate ₹10 L emergency fund first).',
+  'Not the highest expected-value choice in this model — 0% prepay + max loan produces a marginally higher terminal corpus under the deterministic 12% assumption.',
+  '20-year tenure means a higher EMI than a 30-year loan — less monthly breathing room in the early years.',
+];
+
 const RANK_META = [
   { label: '1st — Best',  border: 'border-amber-400',  bg: 'bg-amber-50',  badge: 'bg-amber-400 text-white',   text: 'text-amber-900' },
   { label: '2nd',         border: 'border-slate-400',  bg: 'bg-slate-50',  badge: 'bg-slate-400 text-white',   text: 'text-slate-900' },
@@ -8,6 +22,100 @@ const RANK_META = [
   { label: '4th',         border: 'border-blue-200',   bg: 'bg-blue-50',   badge: 'bg-blue-400 text-white',    text: 'text-blue-900' },
   { label: '5th',         border: 'border-gray-200',   bg: 'bg-gray-50',   badge: 'bg-gray-400 text-white',    text: 'text-gray-800' },
 ];
+
+function SensibleCard({ spot, topValue, nominalMode, onApply }) {
+  const [showMore, setShowMore] = useState(false);
+  const displayed = nominalMode ? spot.netWorth : spot.realNetWorth;
+  const diff      = topValue - displayed;
+  const closeYr   = spot.loanCloseYear != null ? Math.round(spot.loanCloseYear * 10) / 10 : null;
+
+  return (
+    <div className="flex flex-col gap-1.5 border-2 border-blue-900 rounded-lg p-2.5 w-[210px] flex-shrink-0"
+         style={{ backgroundColor: '#eef2ff' }}>
+
+      {/* Badge */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-900 text-white shrink-0">
+          Sensible Strategy
+        </span>
+      </div>
+
+      {/* Net worth */}
+      <div>
+        <div className="text-base font-extrabold tabular-nums leading-tight text-blue-900">
+          {formatINR(displayed)}
+        </div>
+        {diff > 0 && (
+          <div className="text-[9px] text-gray-500 tabular-nums leading-none mt-0.5">
+            −{formatINR(diff)} vs #1
+          </div>
+        )}
+      </div>
+
+      {/* Label */}
+      <div className="text-[9px] text-blue-800 leading-snug font-medium">
+        Max down · 20yr · 25% prepay
+      </div>
+
+      {/* Stats */}
+      <div className="flex gap-2 text-[9px] text-gray-500 flex-wrap">
+        {closeYr != null && <span>Loan closes yr {closeYr}</span>}
+        <span>Interest {formatINR(spot.totalInterestPaid)}</span>
+      </div>
+
+      {/* Pitch */}
+      <p className="text-[9px] text-blue-700 leading-snug border-t border-blue-200 pt-1.5 mt-0.5">
+        Debt-free by yr ~{closeYr ?? '—'}, then 100% surplus to SIP. Trades ~1.5% expected corpus for 9 extra debt-free years and real resilience against market downturns and income shocks.
+      </p>
+
+      {/* Show more */}
+      <button
+        type="button"
+        onClick={() => setShowMore(v => !v)}
+        className="text-[9px] text-gray-400 hover:text-gray-600 text-left transition-colors"
+      >
+        {showMore ? 'Show less ▲' : 'Show more ▼'}
+      </button>
+
+      {showMore && (
+        <div className="border-t border-blue-200 pt-1.5 mt-0.5 flex flex-col gap-1.5">
+          <div>
+            <div className="text-[9px] font-bold text-green-700 mb-0.5">Pros</div>
+            <ul className="flex flex-col gap-1">
+              {SENSIBLE_PROS.map((p, i) => (
+                <li key={i} className="flex gap-1 text-[9px] text-green-800 leading-snug">
+                  <span className="shrink-0 font-bold">✓</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="text-[9px] font-bold text-red-700 mb-0.5">Cons</div>
+            <ul className="flex flex-col gap-1">
+              {SENSIBLE_CONS.map((c, i) => (
+                <li key={i} className="flex gap-1 text-[9px] text-red-800 leading-snug">
+                  <span className="shrink-0 font-bold">✗</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Apply */}
+      <button
+        type="button"
+        onClick={() => onApply(spot)}
+        className="mt-auto text-[9px] font-semibold px-2 py-1 rounded border border-blue-300
+                   bg-white hover:bg-blue-50 text-blue-800 transition-colors"
+      >
+        Apply settings
+      </button>
+    </div>
+  );
+}
 
 function generateProsCons(spot, minLoan, maxLoan, horizonYears) {
   const pros = [];
@@ -189,9 +297,11 @@ export default function SweetSpots({ result, nominalMode, onApply }) {
 
   if (!result || result.spots.length === 0) return null;
 
-  const { spots, minLoan, maxLoan, horizonYears } = result;
-  const topValue  = nominalMode ? spots[0].netWorth : spots[0].realNetWorth;
-  const modeLabel = nominalMode ? '' : ' (inflation-adj)';
+  const { spots, sensibleSpot, minLoan, maxLoan, horizonYears } = result;
+  const topNominal = spots[0].netWorth;
+  const topReal    = spots[0].realNetWorth;
+  const topValue   = nominalMode ? topNominal : topReal;
+  const modeLabel  = nominalMode ? '' : ' (inflation-adj)';
 
   return (
     <div className="border border-gray-200 rounded-md bg-white">
@@ -223,6 +333,14 @@ export default function SweetSpots({ result, nominalMode, onApply }) {
             Click <strong>Apply settings</strong> on any card to load those inputs.
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+            {sensibleSpot && (
+              <SensibleCard
+                spot={sensibleSpot}
+                topValue={topValue}
+                nominalMode={nominalMode}
+                onApply={onApply}
+              />
+            )}
             {spots.map((spot) => (
               <SweetSpotCard
                 key={spot.rank}
