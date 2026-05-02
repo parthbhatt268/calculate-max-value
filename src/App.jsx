@@ -1,21 +1,23 @@
 import { useState, useMemo, useCallback } from 'react';
-import InputsPanel       from './components/InputsPanel';
-import LoanSliders       from './components/LoanSliders';
-import CashFlowSliders   from './components/CashFlowSliders';
-import SIPSection        from './components/SIPSection';
+import InputsPanel        from './components/InputsPanel';
+import LoanSliders        from './components/LoanSliders';
+import CashFlowSliders    from './components/CashFlowSliders';
+import SIPSection         from './components/SIPSection';
 import SensitivitySliders from './components/SensitivitySliders';
-import OutputSummary     from './components/OutputSummary';
-import LoanTimeline      from './components/LoanTimeline';
-import NetWorthChart     from './components/NetWorthChart';
-import CashFlowChart     from './components/CashFlowChart';
-import { simulate }      from './lib/simulate';
+import OutputSummary      from './components/OutputSummary';
+import LoanTimeline       from './components/LoanTimeline';
+import NetWorthChart      from './components/NetWorthChart';
+import CashFlowChart      from './components/CashFlowChart';
+import SweetSpots         from './components/SweetSpots';
+import { simulate }       from './lib/simulate';
+import { findSweetSpots } from './lib/sweetSpots';
 
 const DEFAULTS = {
-  housePrice:             13000000,
+  housePrice:             15000000,
   miscCosts:               2000000,
   liquidSavings:           6500000,
 
-  loanInterestRate:            9.0,
+  loanInterestRate:            7.5,
   loanTenureYears:              30,
   maxLTV:                     0.90,
 
@@ -29,6 +31,7 @@ const DEFAULTS = {
   realEstateAppreciation:    0.04,
 
   extraEMIsPerYear:             0,
+  prepayFraction:               0,
 
   horizonYears:                30,
 };
@@ -65,12 +68,36 @@ export default function App() {
     [state.housePrice, state.liquidSavings, state.miscCosts, state.maxLTV],
   );
 
-  // Loan amount slider bounds
   const minLoan = Math.max(0, state.housePrice - maxDown);
   const maxLoan = state.housePrice - minDown;
 
   const result = useMemo(() => simulate(state), [state]);
   const { history, summary } = result;
+
+  // Sweet spots: recompute only when "fixed" parameters change, not when strategy levers change
+  const sweetSpotsResult = useMemo(
+    () => findSweetSpots(state),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      state.housePrice, state.miscCosts, state.liquidSavings, state.maxLTV,
+      state.loanInterestRate,
+      state.monthlyIncome, state.monthlyExpenses,
+      state.incomeStepUpRate, state.expensesStepUpRate,
+      state.equityReturn, state.inflation, state.realEstateAppreciation,
+      state.horizonYears,
+    ],
+  );
+
+  // Apply a sweet-spot card's variable settings to the current state
+  const handleApplySweetSpot = useCallback((spot) => {
+    handleStateChange({
+      ...state,
+      downPayment:       state.housePrice - spot.loanAmount,
+      loanTenureYears:   spot.tenure,
+      extraEMIsPerYear:  spot.extraEMIsPerYear,
+      prepayFraction:    spot.prepayFraction,
+    });
+  }, [state, handleStateChange]);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-white text-gray-900"
@@ -116,6 +143,9 @@ export default function App() {
 
         {/* ── RIGHT: output + charts ── */}
         <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 p-2.5 bg-gray-50">
+
+          {/* Sweet spots — top of the right panel */}
+          <SweetSpots result={sweetSpotsResult} nominalMode={nominalMode} onApply={handleApplySweetSpot} />
 
           <OutputSummary
             summary={summary}

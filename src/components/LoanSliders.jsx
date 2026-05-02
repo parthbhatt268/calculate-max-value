@@ -22,14 +22,18 @@ function Slider({ label, value, display, min, max, step, onChange, lo, hi }) {
 
 export default function LoanSliders({ state, onChange, minLoan, maxLoan, emi }) {
   const [open, setOpen] = useState(true);
-  const loanAmount = Math.max(minLoan, Math.min(maxLoan, state.housePrice - state.downPayment));
+  const loanAmount   = Math.max(minLoan, Math.min(maxLoan, state.housePrice - state.downPayment));
+  const prepayPct    = Math.round((state.prepayFraction ?? 0) * 100);
+  const monthlyExtra = Math.max(0, state.monthlyIncome - state.monthlyExpenses - emi) * (state.prepayFraction ?? 0);
 
-  const summary = [
+  const summaryParts = [
     formatINR(loanAmount),
     `@ ${state.loanInterestRate.toFixed(2)}%`,
     `${state.loanTenureYears}yr`,
     `EMI ${formatINR(emi)}`,
-  ].join(' · ');
+  ];
+  if (prepayPct > 0) summaryParts.push(`+${prepayPct}% prepay`);
+  const summary = summaryParts.join(' · ');
 
   return (
     <div className="border border-blue-200 rounded-md">
@@ -79,13 +83,51 @@ export default function LoanSliders({ state, onChange, minLoan, maxLoan, emi }) 
           />
 
           <Slider
-            label="Extra EMIs / year"
+            label="Extra EMIs / year (annual bonus)"
             value={state.extraEMIsPerYear}
             display={state.extraEMIsPerYear === 0 ? 'None' : `${state.extraEMIsPerYear} / yr`}
             min={0} max={12} step={1}
             onChange={(v) => onChange({ ...state, extraEMIsPerYear: parseInt(v) })}
             lo="None" hi="12 / yr"
           />
+
+          {/* ── Prepayment strategy slider ── */}
+          <div className="border-t border-blue-200 pt-3">
+            <Slider
+              label="Surplus → extra prepayment (monthly)"
+              value={prepayPct}
+              display={
+                prepayPct === 0   ? 'Off — all to SIP' :
+                prepayPct === 100 ? 'All surplus → loan' :
+                `${prepayPct}% of surplus`
+              }
+              min={0} max={100} step={5}
+              onChange={(v) => onChange({ ...state, prepayFraction: parseInt(v) / 100 })}
+              lo="0% — all SIP" hi="100% — all loan"
+            />
+
+            {prepayPct > 0 && (
+              <div className="mt-2 rounded px-2.5 py-2 border border-blue-300 bg-blue-100">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] text-blue-700 block font-semibold leading-tight">
+                      Extra prepayment
+                    </span>
+                    <span className="text-[9px] text-blue-400">
+                      {prepayPct}% of yr-1 surplus — grows as income rises
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-blue-900 tabular-nums">
+                    {formatINR(monthlyExtra)}/mo
+                  </span>
+                </div>
+                <p className="text-[9px] text-blue-500 mt-1.5 leading-snug">
+                  Once the loan closes, this entire amount flips to SIP.
+                  Watch the Loan Timeline bar shorten as you slide up.
+                </p>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center justify-between rounded px-2.5 py-2 border border-blue-200 bg-blue-100">
             <span className="text-[10px] text-blue-600 leading-tight">Monthly EMI</span>

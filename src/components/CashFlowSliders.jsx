@@ -20,6 +20,26 @@ function Slider({ label, value, display, min, max, step, onChange, lo, hi }) {
   );
 }
 
+function MilestoneGrid({ label, milestones, color }) {
+  return (
+    <div className="rounded border px-2.5 py-2" style={{ borderColor: color + '55', backgroundColor: color + '18' }}>
+      <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color }}>
+        {label}
+      </p>
+      <div className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+        {milestones.map(({ year, value }) => (
+          <div key={year}>
+            <div className="text-[9px] leading-none" style={{ color }}>Yr {year}</div>
+            <div className="text-[11px] font-bold tabular-nums leading-snug" style={{ color: color.replace('4', '9') }}>
+              {formatINR(value)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CashFlowSliders({ state, onChange, emi }) {
   const [open, setOpen] = useState(true);
   const surplus = Math.max(0, state.monthlyIncome - state.monthlyExpenses - emi);
@@ -29,6 +49,19 @@ export default function CashFlowSliders({ state, onChange, emi }) {
     `${formatINR(state.monthlyExpenses)} exp`,
     `${formatINR(surplus)} SIP`,
   ].join(' · ');
+
+  const horizonYears = state.horizonYears ?? 30;
+  const milestoneYears = [1, 5, 10, 15, 25, 30].filter((y) => y <= horizonYears);
+
+  const incomeMilestones = milestoneYears.map((y) => ({
+    year: y,
+    value: Math.round(state.monthlyIncome * Math.pow(1 + state.incomeStepUpRate, y - 1)),
+  }));
+
+  const expenseMilestones = milestoneYears.map((y) => ({
+    year: y,
+    value: Math.round(state.monthlyExpenses * Math.pow(1 + state.expensesStepUpRate, y - 1)),
+  }));
 
   return (
     <div className="border border-emerald-200 rounded-md">
@@ -68,6 +101,12 @@ export default function CashFlowSliders({ state, onChange, emi }) {
             lo="0%" hi="20%"
           />
 
+          <MilestoneGrid
+            label="Monthly income by year"
+            milestones={incomeMilestones}
+            color="#059669"
+          />
+
           <Slider
             label="Monthly expenses"
             value={state.monthlyExpenses}
@@ -84,6 +123,12 @@ export default function CashFlowSliders({ state, onChange, emi }) {
             min={0} max={15} step={1}
             onChange={(v) => onChange({ ...state, expensesStepUpRate: parseInt(v) / 100 })}
             lo="0%" hi="15%"
+          />
+
+          <MilestoneGrid
+            label="Monthly expenses by year"
+            milestones={expenseMilestones}
+            color="#059669"
           />
 
           <div className="rounded px-2.5 py-2 border border-emerald-200 bg-emerald-100">

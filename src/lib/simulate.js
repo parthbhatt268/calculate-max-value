@@ -12,6 +12,7 @@ export function simulate(state) {
     realEstateAppreciation,
     downPayment,
     extraEMIsPerYear,
+    prepayFraction = 0,
     horizonYears,
   } = state;
 
@@ -75,8 +76,23 @@ export function simulate(state) {
       }
     }
 
-    // All surplus goes to SIP — including freed EMI after loan closes
-    const sip = Math.max(0, incomeNow - expensesNow - emiPaidThisMonth);
+    // Monthly surplus available after regular EMI
+    const actualSurplus = Math.max(0, incomeNow - expensesNow - emiPaidThisMonth);
+
+    // Optional: direct a fraction of surplus to extra loan prepayment each month
+    let monthlyPrepay = 0;
+    if (loanBalance > 0.01 && prepayFraction > 0) {
+      monthlyPrepay = Math.min(actualSurplus * prepayFraction, loanBalance);
+      loanBalance  -= monthlyPrepay;
+      extraPrepayThisMonth += monthlyPrepay;
+      if (loanBalance < 0.01 && loanCloseMonth === null) {
+        loanBalance    = 0;
+        loanCloseMonth = month;
+      }
+    }
+
+    // Whatever remains after prepayment goes to SIP; after loan closes, all surplus goes to SIP
+    const sip = actualSurplus - monthlyPrepay;
 
     investmentCorpus = investmentCorpus * (1 + monthlyEquityReturn) + sip;
     houseValue       = houseValue       * (1 + monthlyREAppreciation);
