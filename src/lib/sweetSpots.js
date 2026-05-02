@@ -113,6 +113,11 @@ export function findSweetSpots(baseState) {
     if (isDiverse(c, top5)) top5.push(c);
   }
 
+  // Sensible strategy: max down payment (minLoan), 20-year tenure, 25% prepay
+  const sensibleCandidate = candidates.find(
+    c => Math.abs(c.loanAmount - minLoan) < 5000 && c.tenure === 20 && Math.abs(c.prepayFraction - 0.25) < 0.01
+  ) ?? null;
+
   return {
     spots: top5.map((spot, i) => ({
       ...spot,
@@ -120,6 +125,7 @@ export function findSweetSpots(baseState) {
       label: makeLabel(spot, minLoan, maxLoan),
       pitch: makePitch(spot, minLoan, maxLoan),
     })),
+    sensibleSpot: sensibleCandidate,
     minLoan,
     maxLoan,
     horizonYears: baseState.horizonYears,
