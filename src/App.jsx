@@ -57,7 +57,8 @@ function initState() {
 
 export default function App() {
   const [state, setState]             = useState(initState);
-  const [nominalMode, setNominalMode] = useState(true);
+  const [nominalMode, setNominalMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleStateChange = useCallback((nextState) => {
     setState(clampDownPayment(nextState));
@@ -99,21 +100,54 @@ export default function App() {
     });
   }, [state, handleStateChange]);
 
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-white text-gray-900"
          style={{ fontFamily: 'system-ui,-apple-system,sans-serif' }}>
 
-      <header className="flex-shrink-0 flex items-center px-4 h-9 border-b border-gray-200 bg-white">
+      <header className="flex-shrink-0 flex items-center px-3 h-9 border-b border-gray-200 bg-white gap-2.5">
+        {/* Sidebar toggle */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((o) => !o)}
+          className="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100
+                     text-gray-500 hover:text-gray-800 transition-colors shrink-0"
+          aria-label="Toggle sidebar"
+        >
+          {sidebarOpen
+            ? <span className="text-[13px] leading-none">✕</span>
+            : <span className="text-[15px] leading-none">☰</span>
+          }
+        </button>
+
         <h1 className="text-sm font-semibold text-gray-800 tracking-tight">
           Home Loan Strategy Explorer
         </h1>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+
+        {/* ── Mobile backdrop ── */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
+            onClick={closeSidebar}
+          />
+        )}
 
         {/* ── LEFT: controls ── */}
-        <div className="w-[330px] flex-shrink-0 border-r border-gray-200 overflow-y-auto
-                        flex flex-col gap-2 p-2.5 bg-white">
+        <div className={[
+          // Mobile: fixed overlay sliding from left, below the 36px header
+          'fixed top-9 bottom-0 left-0 z-40 w-[300px]',
+          'transition-transform duration-200 ease-in-out',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop (md+): static in the flex layout
+          'md:static md:z-auto md:translate-x-0 md:w-[330px] md:flex-shrink-0',
+          !sidebarOpen ? 'md:hidden' : '',
+          'border-r border-gray-200 overflow-y-auto',
+          'flex flex-col gap-2 p-2.5 bg-white',
+        ].filter(Boolean).join(' ')}>
 
           <InputsPanel state={state} onChange={handleStateChange} />
 

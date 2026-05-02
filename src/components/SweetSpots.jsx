@@ -84,13 +84,14 @@ function SweetSpotCard({ spot, topValue, nominalMode, onApply, minLoan, maxLoan,
 
   const meta      = RANK_META[spot.rank - 1];
   const displayed = nominalMode ? spot.netWorth : spot.realNetWorth;
+
   const diff      = spot.rank > 1 ? topValue - displayed : 0;
   const closeYr   = spot.loanCloseYear != null ? Math.round(spot.loanCloseYear * 10) / 10 : null;
 
   const { pros, cons } = generateProsCons(spot, minLoan, maxLoan, horizonYears);
 
   return (
-    <div className={`flex flex-col gap-1.5 border-2 ${meta.border} ${meta.bg} rounded-lg p-2.5 min-w-0`}>
+    <div className={`flex flex-col gap-1.5 border-2 ${meta.border} ${meta.bg} rounded-lg p-2.5 w-[210px] flex-shrink-0`}>
 
       {/* Rank badge */}
       <div className="flex items-center gap-1.5">
@@ -221,7 +222,7 @@ export default function SweetSpots({ result, nominalMode, onApply }) {
             held constant. Ranked by {nominalMode ? 'nominal' : 'inflation-adjusted'} terminal net worth.
             Click <strong>Apply settings</strong> on any card to load those inputs.
           </p>
-          <div className="grid grid-cols-5 gap-2 items-start">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
             {spots.map((spot) => (
               <SweetSpotCard
                 key={spot.rank}
