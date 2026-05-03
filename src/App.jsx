@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import InputsPanel from "./components/InputsPanel";
 import LoanSliders from "./components/LoanSliders";
 import CashFlowSliders from "./components/CashFlowSliders";
@@ -62,14 +62,6 @@ export default function App() {
   const [state, setState] = useState(initState);
   const [nominalMode, setNominalMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [summaryOpen, setSummaryOpen] = useState(true);
-
-  useEffect(() => {
-    if (!summaryOpen) return;
-    const t = setTimeout(() => setSummaryOpen(false), 30_000);
-    return () => clearTimeout(t);
-  }, [summaryOpen]);
-
   const handleStateChange = useCallback((nextState) => {
     setState(clampDownPayment(nextState));
   }, []);
@@ -207,20 +199,11 @@ export default function App() {
             onApply={handleApplySweetSpot}
           />
 
-          {summaryOpen ? (
-            <OutputSummary
-              summary={summary}
-              nominalMode={nominalMode}
-              onToggle={setNominalMode}
-            />
-          ) : (
-            <button
-              onClick={() => setSummaryOpen(true)}
-              className="self-start text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 rounded-full px-2.5 py-0.5 bg-white transition-colors"
-            >
-              Show output summary
-            </button>
-          )}
+          <OutputSummary
+            summary={summary}
+            nominalMode={nominalMode}
+            onToggle={setNominalMode}
+          />
 
           <LoanTimeline
             loanCloseMonth={summary?.loanCloseMonth}

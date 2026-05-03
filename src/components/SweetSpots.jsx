@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatINR } from "../lib/formatINR";
 
 const SENSIBLE_PROS = [
@@ -396,6 +396,12 @@ function SweetSpotCard({
 
 export default function SweetSpots({ result, nominalMode, onApply }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => setOpen(false), 30_000);
+    return () => clearTimeout(t);
+  }, [open]);
 
   if (!result || result.spots.length === 0) return null;
 
