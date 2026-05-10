@@ -25,7 +25,8 @@ export default function SensitivitySliders({ state, onChange }) {
 
   const inflPct = (Math.round(state.inflation * 1000) / 10).toFixed(1);
   const rePct   = (Math.round(state.realEstateAppreciation * 1000) / 10).toFixed(1);
-  const summary = `Inflation ${inflPct}% · RE appreciation ${rePct}%`;
+  const fxPct   = (Math.round((state.fxAppreciationRate ?? 0) * 1000) / 10).toFixed(2);
+  const summary = `Inflation ${inflPct}% · RE ${rePct}%${parseFloat(fxPct) > 0 ? ` · EUR/INR +${fxPct}%` : ''}`;
 
   return (
     <div className="border border-slate-200 rounded-md">
@@ -64,6 +65,24 @@ export default function SensitivitySliders({ state, onChange }) {
             onChange={(v) => onChange({ ...state, realEstateAppreciation: parseFloat(v) / 100 })}
             lo="0%" hi="12%"
           />
+
+          <div className="border-t border-slate-200 pt-3">
+            <Slider
+              label="EUR / USD → INR appreciation"
+              value={Math.round((state.fxAppreciationRate ?? 0) * 10000) / 100}
+              display={parseFloat(fxPct) === 0 ? 'Off (same currency)' : `+${fxPct}% / yr`}
+              min={0} max={5} step={0.25}
+              onChange={(v) => onChange({ ...state, fxAppreciationRate: parseFloat(v) / 100 })}
+              lo="0% — no FX gain" hi="5% / yr"
+            />
+            {parseFloat(fxPct) > 0 && (
+              <p className="text-[9px] text-slate-400 mt-1.5 leading-snug">
+                Your income in INR grows {fxPct}% /yr faster than the step-up rate as the
+                foreign currency strengthens. The INR loan becomes relatively cheaper
+                each year — this shifts the model toward investing over prepayment.
+              </p>
+            )}
+          </div>
 
         </div>
       )}

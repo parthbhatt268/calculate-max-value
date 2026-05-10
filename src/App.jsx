@@ -32,6 +32,9 @@ const DEFAULTS = {
 
   extraEMIsPerYear: 0,
   prepayFraction: 0,
+  earlyPrepayYears: 0,
+
+  fxAppreciationRate: 0,
 
   horizonYears: 30,
 };

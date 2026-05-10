@@ -13,6 +13,8 @@ export function simulate(state) {
     downPayment,
     extraEMIsPerYear,
     prepayFraction = 0,
+    earlyPrepayYears = 0,
+    fxAppreciationRate = 0,
     horizonYears,
   } = state;
 
@@ -46,7 +48,8 @@ export function simulate(state) {
 
   for (let month = 1; month <= totalMonths; month++) {
     const yearIndex   = Math.floor((month - 1) / 12);
-    const incomeNow   = monthlyIncome   * Math.pow(1 + incomeStepUpRate,   yearIndex);
+    const fxFactor    = Math.pow(1 + fxAppreciationRate, yearIndex);
+    const incomeNow   = monthlyIncome   * Math.pow(1 + incomeStepUpRate,   yearIndex) * fxFactor;
     const expensesNow = monthlyExpenses * Math.pow(1 + expensesStepUpRate, yearIndex);
 
     let emiInterestThisMonth  = 0;
@@ -80,9 +83,10 @@ export function simulate(state) {
     const actualSurplus = Math.max(0, incomeNow - expensesNow - emiPaidThisMonth);
 
     // Optional: direct a fraction of surplus to extra loan prepayment each month
+    const activePrepayFraction = (earlyPrepayYears > 0 && yearIndex < earlyPrepayYears) ? 1.0 : prepayFraction;
     let monthlyPrepay = 0;
-    if (loanBalance > 0.01 && prepayFraction > 0) {
-      monthlyPrepay = Math.min(actualSurplus * prepayFraction, loanBalance);
+    if (loanBalance > 0.01 && activePrepayFraction > 0) {
+      monthlyPrepay = Math.min(actualSurplus * activePrepayFraction, loanBalance);
       loanBalance  -= monthlyPrepay;
       extraPrepayThisMonth += monthlyPrepay;
       if (loanBalance < 0.01 && loanCloseMonth === null) {

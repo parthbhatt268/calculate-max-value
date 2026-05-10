@@ -127,6 +127,29 @@ export default function LoanSliders({ state, onChange, minLoan, maxLoan, emi }) 
                 </p>
               </div>
             )}
+
+            {/* Early aggressive prepayment slider */}
+            <div className="mt-3">
+              <Slider
+                label="Max prepayment for first N years"
+                value={state.earlyPrepayYears ?? 0}
+                display={
+                  (state.earlyPrepayYears ?? 0) === 0
+                    ? 'Off'
+                    : `${state.earlyPrepayYears} yr${state.earlyPrepayYears === 1 ? '' : 's'}`
+                }
+                min={0} max={10} step={1}
+                onChange={(v) => onChange({ ...state, earlyPrepayYears: parseInt(v) })}
+                lo="Off" hi="10 yrs"
+              />
+              {(state.earlyPrepayYears ?? 0) > 0 && (
+                <p className="text-[9px] text-blue-500 mt-1.5 leading-snug">
+                  Yrs 1–{state.earlyPrepayYears}: 100% of surplus → loan.
+                  Yr {state.earlyPrepayYears + 1}+:{' '}
+                  {prepayPct > 0 ? `${prepayPct}% surplus → loan, rest` : 'all surplus'} → SIP.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-between rounded px-2.5 py-2 border border-blue-200 bg-blue-100">
